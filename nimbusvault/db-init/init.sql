@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS metadata (
+    id SERIAL PRIMARY KEY,
+    info TEXT
+);
