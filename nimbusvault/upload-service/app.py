@@ -1,5 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+import uvicorn
+
+SERVICE_NAME = "upload-service"
 
 app = FastAPI()
 
@@ -13,8 +16,12 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Hello from upload-service"}
+    return {"message": f"Hello from {SERVICE_NAME}"}
 
 @app.get("/health")
-async def health():
-    return {"status": "ok"}
+async def health() -> dict:
+    """Health check endpoint."""
+    return {"service": SERVICE_NAME, "status": "OK"}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8002)
