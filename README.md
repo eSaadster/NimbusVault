@@ -12,9 +12,6 @@ storage-service	Internal Python service for handling file storage operations	Int
 admin-ui	Next.js frontend interface for administrators	3001
 db	PostgreSQL database initialized with db-init/init.sql	5432
 
-🚀 Getting Started
-Prerequisites
-Ensure you have the following installed:
 
 Docker
 
