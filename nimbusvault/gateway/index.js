@@ -5,7 +5,8 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
-const http = require('http');
+const { v4: uuidv4 } = require('uuid');
+const fetch = require('node-fetch');
 const { buildLogger, requestMiddleware } = require('../shared/logger');
 
 const app = express();
@@ -13,13 +14,11 @@ const PORT = process.env.PORT || 3000;
 const SECRET = process.env.AUTH_SECRET || 'secret';
 const logger = buildLogger('gateway');
 
-// Basic Middleware
+// Middleware Setup
 app.use(express.json());
 app.use(cookieParser());
 app.use(helmet());
 app.use(cors({ origin: 'http://localhost:3001', credentials: true }));
-
-// Logging & Request ID Middleware
 app.use(requestMiddleware(logger));
 
 // Rate Limiting for auth routes
@@ -57,41 +56,43 @@ const proxy = (path, target, requireAuth = true) => {
   return middlewares;
 };
 
-// Route proxies - auth doesn't require authentication, others do
+// Route proxies
 app.use('/api/auth', ...proxy('/api/auth', 'http://auth-service:8001', false));
 app.use('/api/upload', ...proxy('/api/upload', 'http://upload-service:8002'));
 app.use('/api/metadata', ...proxy('/api/metadata', 'http://metadata-service:8003'));
 app.use('/api/storage', ...proxy('/api/storage', 'http://storage-service:8004'));
 
-// Health Check
+// Health Check Endpoint
 const services = {
-  auth: { host: 'auth-service', port: 8001 },
-  upload: { host: 'upload-service', port: 8002 },
-  metadata: { host: 'metadata-service', port: 8003 },
-  storage: { host: 'storage-service', port: 8004 },
+  auth: process.env.AUTH_SERVICE_URL || 'http://auth-service:8001/health',
+  upload: process.env.UPLOAD_SERVICE_URL || 'http://upload-service:8002/health',
+  metadata: process.env.METADATA_SERVICE_URL || 'http://metadata-service:8003/health',
+  storage: process.env.STORAGE_SERVICE_URL || 'http://storage-service:8004/health',
 };
 
-function checkService({ host, port }) {
-  return new Promise((resolve) => {
-    const req = http.get({ host, port, timeout: 2000 }, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    req.on('error', () => resolve(false));
-    req.on('timeout', () => {
-      req.destroy();
-      resolve(false);
-    });
-  });
-}
-
 app.get('/health', async (_req, res) => {
-  const status = {};
+  const results = {};
+
   await Promise.all(
-    Object.entries(services).map(async ([name, conf]) => {
-      status[name] = await checkService(conf);
+    Object.entries(services).map(async ([name, url]) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        results[name] = response.ok ? 'healthy' : 'unhealthy';
+      } catch (err) {
+        results[name] = 'unhealthy';
+      } finally {
+        clearTimeout(timeout);
+      }
     })
   );
-  res.json(status);
+
+  const overall = Object.values(results).every((s) => s === 'healthy')
+    ? 'healthy'
+    : 'unhealthy';
+
+  res.json({ status: overall, services: results });
 });
 
 // Root
@@ -107,7 +108,7 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, _next) => {
-  logger.error(`Unhandled error: ${err}`, { requestId: req.requestId });
+  logger.error(`Unhandled error: ${err}`, { requestId: req.requestId || uuidv4() });
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
