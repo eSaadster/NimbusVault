@@ -1,4 +1,6 @@
 CREATE TABLE IF NOT EXISTS metadata (
     id SERIAL PRIMARY KEY,
-    info TEXT
+    filename TEXT NOT NULL,
+    uploaded_by TEXT NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL
 );
