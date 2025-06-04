@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 import psycopg2
@@ -6,6 +7,14 @@ import psycopg2
 SERVICE_NAME = "metadata-service"
 
 app = FastAPI()
+
+# Enable CORS for all origins, methods, and headers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
