@@ -1,12 +1,14 @@
 import os
+import time
 from pathlib import Path
 from datetime import datetime, timedelta
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from jose import jwt
 from passlib.context import CryptContext
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import uvicorn
 
 from shared.logger import configure_logger, request_id_middleware
@@ -30,9 +32,9 @@ RATE_LIMIT_WINDOW = 60
 RATE_LIMIT_COUNT = 5
 
 logger = configure_logger(SERVICE_NAME)
-
 app = FastAPI()
 
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,6 +42,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus metrics
+REQUEST_COUNT = Counter(
+    "auth_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"]
+)
+REQUEST_LATENCY = Histogram(
+    "auth_request_latency_seconds", "Latency of HTTP requests", ["endpoint"]
+)
+
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+    REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
+    REQUEST_LATENCY.labels(request.url.path).observe(duration)
+    return response
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
@@ -50,6 +69,7 @@ async def exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled error: {exc}", exc_info=True)
     return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
+# Models
 class User(BaseModel):
     id: int
     username: str
@@ -65,6 +85,7 @@ class LoginModel(BaseModel):
     username: str
     password: str
 
+# Auth utils
 def check_rate_limit(ip: str):
     now = datetime.utcnow()
     timestamps = RATE_LIMIT.get(ip, [])
@@ -103,6 +124,7 @@ def get_current_user(request: Request):
     payload = verify_token(token)
     return payload
 
+# Routes
 @app.post('/register')
 async def register(data: RegisterModel, request: Request):
     check_rate_limit(request.client.host)
@@ -155,9 +177,25 @@ async def me(user=Depends(get_current_user)):
 async def root():
     return {'message': f'Hello from {SERVICE_NAME}'}
 
+@app.get("/metrics")
+async def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 @app.get("/health")
 async def health():
     return {"service": SERVICE_NAME, "status": "OK"}
+
+@app.get("/health/live")
+async def health_live():
+    return {"status": "ok"}
+
+@app.get("/health/ready")
+async def health_ready():
+    return {"status": "ok"}
+
+@app.get("/health/detailed")
+async def health_detailed():
+    return {"status": "ok", "dependencies": {}}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8001)

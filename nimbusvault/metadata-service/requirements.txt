@@ -1,4 +1,5 @@
 fastapi
 uvicorn
 psycopg2-binary
-PyJWT[crypto]
+prometheus_client
+python-jose[cryptography]

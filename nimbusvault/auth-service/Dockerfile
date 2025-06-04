@@ -2,8 +2,10 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY auth-service/requirements.txt ./
+# Install system dependencies and copy requirements
+COPY auth-service/requirements.txt ./requirements.txt
+RUN apt-get update && apt-get install -y curl \
+    && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy service-specific code and shared modules
@@ -15,3 +17,6 @@ EXPOSE 8001
 
 # Start the service
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8001"]
+
+# Add health check
+HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8001/health/ready || exit 1

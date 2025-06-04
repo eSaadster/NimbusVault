@@ -1,5 +1,5 @@
 fastapi
 uvicorn
-PyJWT[crypto]
+prometheus_client
 python-jose[cryptography]
 passlib[bcrypt]

@@ -9,6 +9,8 @@
     "helmet": "^7.0.0",
     "cookie-parser": "^1.4.6",
     "express-rate-limit": "^6.8.1",
-    "jsonwebtoken": "^9.0.1"
+    "jsonwebtoken": "^9.0.1",
+    "node-fetch": "^2.6.11",
+    "prom-client": "^14.1.1"
   }
 }
