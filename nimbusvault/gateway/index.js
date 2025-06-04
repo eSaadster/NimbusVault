@@ -3,28 +3,25 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const http = require('http');
+const { buildLogger, requestMiddleware } = require('../shared/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SECRET = process.env.AUTH_SECRET || 'secret';
+const logger = buildLogger('gateway');
 
 // Enable CORS
 app.use(cors());
 
-// Simple request logger
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.originalUrl}`);
-  next();
-});
+// Logging & Request ID Middleware
+app.use(requestMiddleware(logger));
 
-// Additional manual CORS headers (defensive)
+// Additional manual CORS headers
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
 
@@ -39,11 +36,11 @@ function authMiddleware(req, res, next) {
     jwt.verify(token, SECRET);
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 }
 
-// Proxy helper with error handler
+// Proxy helper
 const proxy = (path, target, requireAuth = true) => {
   const middlewares = [];
   if (requireAuth) middlewares.push(authMiddleware);
@@ -61,15 +58,15 @@ const proxy = (path, target, requireAuth = true) => {
   return middlewares;
 };
 
-// Auth proxy (no auth middleware)
+// Auth (public)
 app.use('/api/auth', ...proxy('/api/auth', 'http://auth-service:8001', false));
 
-// Protected routes
+// Protected services
 app.use('/api/upload', ...proxy('/api/upload', 'http://upload-service:8002'));
 app.use('/api/metadata', ...proxy('/api/metadata', 'http://metadata-service:8003'));
 app.use('/api/storage', ...proxy('/api/storage', 'http://storage-service:8004'));
 
-// Health check for all services
+// Health Check
 const services = {
   auth: { host: 'auth-service', port: 8001 },
   upload: { host: 'upload-service', port: 8002 },
@@ -100,8 +97,9 @@ app.get('/health', async (_req, res) => {
   res.json(status);
 });
 
-// Root route
-app.get('/', (_req, res) => {
+// Root
+app.get('/', (req, res) => {
+  logger.info('Health check', { requestId: req.requestId });
   res.send('Hello from gateway');
 });
 
@@ -110,12 +108,13 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
-// General error handler
+// Error handler
 app.use((err, req, res, _next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  logger.error(`Unhandled error: ${err}`, { requestId: req.requestId });
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
+// Start server
 app.listen(PORT, () => {
-  console.log(`Gateway running on port ${PORT}`);
+  logger.info(`Gateway running on port ${PORT}`);
 });

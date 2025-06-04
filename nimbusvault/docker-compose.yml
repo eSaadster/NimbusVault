@@ -12,37 +12,67 @@ services:
       - admin-ui
 
   gateway:
-    build: ./gateway
+    build:
+      context: .
+      dockerfile: ./gateway/Dockerfile
     ports:
       - "3000:3000"
     depends_on:
       - auth-service
       - upload-service
       - metadata-service
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   auth-service:
-    build: ./auth-service
+    build:
+      context: .
+      dockerfile: ./auth-service/Dockerfile
     environment:
       - PORT=8001
     ports:
       - "8001:8001"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   upload-service:
-    build: ./upload-service
+    build:
+      context: .
+      dockerfile: ./upload-service/Dockerfile
     environment:
       - PORT=8002
     ports:
       - "8002:8002"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   storage-service:
-    build: ./storage-service
+    build:
+      context: .
+      dockerfile: ./storage-service/Dockerfile
     environment:
       - PORT=8004
     ports:
       - "8004:8004"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   metadata-service:
-    build: ./metadata-service
+    build:
+      context: .
+      dockerfile: ./metadata-service/Dockerfile
     environment:
       - PORT=8003
       - DATABASE_URL=postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@db:5432/$POSTGRES_DB
@@ -50,11 +80,23 @@ services:
       - "8003:8003"
     depends_on:
       - db
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   admin-ui:
-    build: ./admin-ui
+    build:
+      context: .
+      dockerfile: ./admin-ui/Dockerfile
     ports:
-      - "3001:3000"  # Host:Container port mapping
+      - "3001:3000"  # Maps host port 3001 to container's 3000
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   db:
     image: postgres:15
@@ -64,6 +106,11 @@ services:
       - ./db-init/init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   db_data:

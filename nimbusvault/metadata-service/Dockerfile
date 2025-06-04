@@ -1,7 +1,17 @@
 FROM python:3.11-slim
+
 WORKDIR /app
-COPY requirements.txt ./
+
+# Install dependencies
+COPY metadata-service/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# Copy service files and shared modules
+COPY metadata-service/ ./
+COPY shared ./shared
+
+# Expose correct port
+EXPOSE 8003
+
+# Start the service
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8003"]
