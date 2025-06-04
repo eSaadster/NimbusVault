@@ -1,22 +1,24 @@
+NimbusVault
 NimbusVault is a microservices-based media storage application built with Docker Compose. Each service runs in its own container, making the system modular, scalable, and easy to maintain.
 
-Services
-gateway – Node.js Express server acting as the entry point for all API traffic (Port: 3000).
+🧩 Services
+Service	Description	Port
+nginx	Reverse proxy for routing requests to internal services	80
+gateway	Node.js Express server acting as the API entry point	3000
+auth-service	FastAPI service for authentication	8001
+upload-service	FastAPI service for uploading files via /upload	8002
+metadata-service	FastAPI service storing file metadata in PostgreSQL	8003
+storage-service	Internal Python service for handling file storage operations	Internal
+admin-ui	Next.js frontend interface for administrators	3001
+db	PostgreSQL database initialized with db-init/init.sql	5432
 
-auth-service – FastAPI service handling user authentication (Port: 8001).
+🚀 Getting Started
+Prerequisites
+Ensure you have the following installed:
 
-upload-service – FastAPI service exposing POST /upload for file uploads (Port: 8002).
+Docker
 
-metadata-service – FastAPI service for storing file metadata in PostgreSQL (Port: 8003).
-
-storage-service – Python utility module for handling file system or cloud storage (Internal only).
-
-admin-ui – Next.js frontend interface for administrators (Port: 3001).
-
-db – PostgreSQL database initialized with db-init/init.sql (Port: 5432, internal).
-
-Getting Started
-Make sure you have Docker and Docker Compose installed on your machine.
+Docker Compose
 
 Run the Project
 bash
@@ -24,20 +26,26 @@ Copy
 Edit
 git clone <repository-url>
 cd nimbusvault
-docker-compose up --build
-Once the services are running, you can access them at:
+docker compose up --build
+🌐 Access Points
+Access the application via NGINX reverse proxy:
 
-Service	Endpoint	Port
-Gateway	http://localhost:3000	3000
-Auth Service	http://localhost:8001	8001
-Upload Service	http://localhost:8002	8002
-Metadata Service	http://localhost:8003	8003
-Admin UI	http://localhost:3001	3001
-DB	n/a (internal)	5432
-Storage Service	n/a (internal only)	n/a
+Main Entry (NGINX): http://localhost
 
-Architecture Diagram
-plaintext
+Individual services (for debugging/testing):
+
+Gateway: http://localhost:3000
+
+Auth Service: http://localhost:8001
+
+Upload Service: http://localhost:8002
+
+Metadata Service: http://localhost:8003
+
+Admin UI: http://localhost:3001
+
+🧱 Architecture Diagram
+pgsql
 Copy
 Edit
 +-------------+
@@ -47,6 +55,11 @@ Edit
       v
 +-------------+
 |   Gateway   | (3000)
++-------------+
+      |
+      v
++-------------+
+|   NGINX     | (80)
 +-------------+
    /    |    \
   v     v     v
