@@ -1,31 +1,64 @@
-# NimbusVault
+NimbusVault is a microservices-based media storage application built with Docker Compose. Each service runs in its own container, making the system modular, scalable, and easy to maintain.
 
-NimbusVault is a Docker-based microservices architecture.
+Services
+gateway – Node.js Express server acting as the entry point for all API traffic (Port: 3000).
 
-## Services
-- **gateway**: Node.js Express server acting as entrypoint.
-- **auth-service**: FastAPI for authentication.
-- **upload-service**: FastAPI for file uploads.
-- **storage-service**: Python service handling storage utilities.
-- **metadata-service**: FastAPI service storing metadata in PostgreSQL.
-- **admin-ui**: Next.js frontend.
-- **db**: PostgreSQL database initialized with `db-init/init.sql`.
+auth-service – FastAPI service handling user authentication (Port: 8001).
 
-## Getting Started
+upload-service – FastAPI service exposing POST /upload for file uploads (Port: 8002).
 
-Ensure you have Docker and Docker Compose installed.
+metadata-service – FastAPI service for storing file metadata in PostgreSQL (Port: 8003).
 
-```bash
+storage-service – Python utility module for handling file system or cloud storage (Internal only).
+
+admin-ui – Next.js frontend interface for administrators (Port: 3001).
+
+db – PostgreSQL database initialized with db-init/init.sql (Port: 5432, internal).
+
+Getting Started
+Make sure you have Docker and Docker Compose installed on your machine.
+
+Run the Project
+bash
+Copy
+Edit
+git clone <repository-url>
 cd nimbusvault
-docker compose up --build
-```
+docker-compose up --build
+Once the services are running, you can access them at:
 
-## Ports
-- Gateway: `3000`
-- Auth Service: `8001`
-- Upload Service: `8002`
-- Metadata Service: `8003`
-- Admin UI: `3001`
-- PostgreSQL: `5432`
+Service	Endpoint	Port
+Gateway	http://localhost:3000	3000
+Auth Service	http://localhost:8001	8001
+Upload Service	http://localhost:8002	8002
+Metadata Service	http://localhost:8003	8003
+Admin UI	http://localhost:3001	3001
+DB	n/a (internal)	5432
+Storage Service	n/a (internal only)	n/a
 
-Access the services via `http://localhost:<port>`.
+Architecture Diagram
+plaintext
+Copy
+Edit
++-------------+
+|  Admin UI   | (3001)
++-------------+
+      |
+      v
++-------------+
+|   Gateway   | (3000)
++-------------+
+   /    |    \
+  v     v     v
+Auth  Upload  Metadata
+8001   8002     8003
+                |
+                v
+         +-------------+
+         | PostgreSQL  | (5432)
+         +-------------+
+                |
+                v
+         +-------------+
+         | Storage Svc | (internal)
+         +-------------+
