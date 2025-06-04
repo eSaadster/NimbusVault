@@ -57,7 +57,7 @@ const proxy = (path, target, requireAuth = true) => {
   return middlewares;
 };
 
-// Route proxies
+// Route proxies - auth doesn't require authentication, others do
 app.use('/api/auth', ...proxy('/api/auth', 'http://auth-service:8001', false));
 app.use('/api/upload', ...proxy('/api/upload', 'http://upload-service:8002'));
 app.use('/api/metadata', ...proxy('/api/metadata', 'http://metadata-service:8003'));
