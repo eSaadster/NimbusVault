@@ -2,12 +2,19 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 8000;
 
+// Health check route
 app.get('/health', (req, res) => {
-  res.send('OK');
+  res.json({ service: 'gateway', status: 'OK' });
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.send('Hello from gateway');
+});
+
+// Proxy routes to other services
 app.use(
   '/api/auth',
   createProxyMiddleware({
@@ -43,10 +50,6 @@ app.use(
     pathRewrite: { '^/api/metadata': '' }
   })
 );
-
-app.get('/', (req, res) => {
-  res.send('Hello from gateway');
-});
 
 app.listen(PORT, () => {
   console.log(`Gateway running on port ${PORT}`);
