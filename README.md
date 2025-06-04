@@ -16,23 +16,22 @@ NimbusVault is a microservices-based media storage application built with Docker
 git clone <repository-url>
 cd NimbusVault/nimbusvault
 docker-compose up --build
-```
+Endpoints and Ports
+Service	Endpoint	Port
+gateway	/	3000
+auth-service	/	8001
+upload-service	/	8002
+metadata-service	/	8003
+admin-ui	/	3001
+db	n/a	5432
+storage-service	n/a	internal
 
-## Endpoints and Ports
-| Service           | Endpoint | Port |
-|-------------------|---------|------|
-| gateway           | `/`     | 3000 |
-| auth-service      | `/`     | 8001 |
-| upload-service    | `/`     | 8002 |
-| metadata-service  | `/`     | 8003 |
-| admin-ui          | `/`     | 3001 |
-| db                | n/a     | 5432 |
-| storage-service   | n/a     | internal |
+Services can be accessed via http://localhost:<port>.
 
-Services can be accessed via `http://localhost:<port>`.
-
-## Architecture
-```
+Architecture
+pgsql
+Copy
+Edit
       +-------------+
       |  Admin UI   | (3001)
       +-------------+
@@ -51,4 +50,3 @@ Services can be accessed via `http://localhost:<port>`.
                         |
                         v
                    storage-svc
-```
