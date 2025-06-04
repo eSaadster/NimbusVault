@@ -25,7 +25,8 @@ docker compose up --build
 - Auth Service: `8001`
 - Upload Service: `8002`
 - Metadata Service: `8003`
-- Admin UI: `3001`
+- Storage Service: `8004`
+- Admin UI: `3000`
 - PostgreSQL: `5432`
 
 Access the services via `http://localhost:<port>`.

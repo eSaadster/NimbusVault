@@ -25,6 +25,8 @@ services:
 
   storage-service:
     build: ./storage-service
+    ports:
+      - "8004:8004"
 
   metadata-service:
     build: ./metadata-service
@@ -39,7 +41,7 @@ services:
   admin-ui:
     build: ./admin-ui
     ports:
-      - "3001:3001"
+      - "3000:3000"
 
   db:
     image: postgres:15
