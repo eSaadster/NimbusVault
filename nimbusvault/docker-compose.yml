@@ -1,5 +1,16 @@
 version: '3.9'
+
 services:
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+      - admin-ui
+
   gateway:
     build: ./gateway
     ports:
@@ -25,6 +36,10 @@ services:
 
   storage-service:
     build: ./storage-service
+    environment:
+      - PORT=8004
+    ports:
+      - "8004:8004"
 
   metadata-service:
     build: ./metadata-service
@@ -39,7 +54,7 @@ services:
   admin-ui:
     build: ./admin-ui
     ports:
-      - "3001:3001"
+      - "3001:3000"  # Host:Container port mapping
 
   db:
     image: postgres:15

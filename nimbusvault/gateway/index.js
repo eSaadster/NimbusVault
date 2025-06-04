@@ -1,9 +1,15 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const http = require('http');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const SECRET = process.env.AUTH_SECRET || 'secret';
+
+// Enable CORS
+app.use(cors());
 
 // Simple request logger
 app.use((req, res, next) => {
@@ -11,7 +17,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Basic CORS middleware
+// Additional manual CORS headers (defensive)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
@@ -22,25 +28,48 @@ app.use((req, res, next) => {
   next();
 });
 
-// Proxy helper
-const proxy = (path, target) =>
-  createProxyMiddleware({
-    target,
-    changeOrigin: true,
-    pathRewrite: (pathReq) => pathReq.replace(new RegExp(`^${path}`), ''),
-    onError: (_err, _req, res) => {
-      res.status(502).json({ error: 'Bad gateway' });
-    },
-    logLevel: 'warn',
-  });
+// JWT Auth Middleware
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing bearer token' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    jwt.verify(token, SECRET);
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
 
-// Proxy routes for microservices
-app.use('/api/auth', proxy('/api/auth', 'http://auth-service:8001'));
-app.use('/api/upload', proxy('/api/upload', 'http://upload-service:8002'));
-app.use('/api/metadata', proxy('/api/metadata', 'http://metadata-service:8003'));
-app.use('/api/storage', proxy('/api/storage', 'http://storage-service:8004'));
+// Proxy helper with error handler
+const proxy = (path, target, requireAuth = true) => {
+  const middlewares = [];
+  if (requireAuth) middlewares.push(authMiddleware);
+  middlewares.push(
+    createProxyMiddleware({
+      target,
+      changeOrigin: true,
+      pathRewrite: (pathReq) => pathReq.replace(new RegExp(`^${path}`), ''),
+      onError: (_err, _req, res) => {
+        res.status(502).json({ error: 'Bad gateway' });
+      },
+      logLevel: 'warn',
+    })
+  );
+  return middlewares;
+};
 
-// Health check endpoint
+// Auth proxy (no auth middleware)
+app.use('/api/auth', ...proxy('/api/auth', 'http://auth-service:8001', false));
+
+// Protected routes
+app.use('/api/upload', ...proxy('/api/upload', 'http://upload-service:8002'));
+app.use('/api/metadata', ...proxy('/api/metadata', 'http://metadata-service:8003'));
+app.use('/api/storage', ...proxy('/api/storage', 'http://storage-service:8004'));
+
+// Health check for all services
 const services = {
   auth: { host: 'auth-service', port: 8001 },
   upload: { host: 'upload-service', port: 8002 },
@@ -71,7 +100,7 @@ app.get('/health', async (_req, res) => {
   res.json(status);
 });
 
-// Default route
+// Root route
 app.get('/', (_req, res) => {
   res.send('Hello from gateway');
 });
@@ -79,6 +108,12 @@ app.get('/', (_req, res) => {
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
+});
+
+// General error handler
+app.use((err, req, res, _next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 app.listen(PORT, () => {
