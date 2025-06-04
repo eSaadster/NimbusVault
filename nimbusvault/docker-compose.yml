@@ -15,6 +15,8 @@ services:
       - PORT=8001
     ports:
       - "8001:8001"
+    volumes:
+      - ./common:/common
 
   upload-service:
     build: ./upload-service
@@ -22,9 +24,13 @@ services:
       - PORT=8002
     ports:
       - "8002:8002"
+    volumes:
+      - ./common:/common
 
   storage-service:
     build: ./storage-service
+    volumes:
+      - ./common:/common
 
   metadata-service:
     build: ./metadata-service
@@ -35,6 +41,8 @@ services:
       - "8003:8003"
     depends_on:
       - db
+    volumes:
+      - ./common:/common
 
   admin-ui:
     build: ./admin-ui
