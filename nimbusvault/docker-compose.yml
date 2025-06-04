@@ -25,6 +25,10 @@ services:
 
   storage-service:
     build: ./storage-service
+    environment:
+      - PORT=8004
+    ports:
+      - "8004:8004"
 
   metadata-service:
     build: ./metadata-service
