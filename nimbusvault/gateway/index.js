@@ -9,22 +9,46 @@ app.get('/health', (req, res) => {
   res.json({ service: 'gateway', status: 'OK' });
 });
 
+// Root route
+app.get('/', (req, res) => {
+  res.send('Hello from gateway');
+});
+
 // Proxy routes to other services
 app.use(
   '/api/auth',
-  createProxyMiddleware({ target: 'http://auth-service:8001', changeOrigin: true })
+  createProxyMiddleware({
+    target: 'http://auth-service:8001',
+    changeOrigin: true,
+    pathRewrite: { '^/api/auth': '' }
+  })
 );
+
 app.use(
   '/api/upload',
-  createProxyMiddleware({ target: 'http://upload-service:8002', changeOrigin: true })
+  createProxyMiddleware({
+    target: 'http://upload-service:8002',
+    changeOrigin: true,
+    pathRewrite: { '^/api/upload': '' }
+  })
 );
+
 app.use(
   '/api/storage',
-  createProxyMiddleware({ target: 'http://storage-service:8003', changeOrigin: true })
+  createProxyMiddleware({
+    target: 'http://storage-service:8003',
+    changeOrigin: true,
+    pathRewrite: { '^/api/storage': '' }
+  })
 );
+
 app.use(
   '/api/metadata',
-  createProxyMiddleware({ target: 'http://metadata-service:8004', changeOrigin: true })
+  createProxyMiddleware({
+    target: 'http://metadata-service:8004',
+    changeOrigin: true,
+    pathRewrite: { '^/api/metadata': '' }
+  })
 );
 
 app.listen(PORT, () => {
