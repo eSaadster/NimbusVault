@@ -1,4 +1,5 @@
 fastapi
 uvicorn
+PyJWT[crypto]
 python-multipart
 boto3

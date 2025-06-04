@@ -1,6 +1,9 @@
 const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const http = require('http');
 const { buildLogger, requestMiddleware } = require('../shared/logger');
@@ -10,22 +13,20 @@ const PORT = process.env.PORT || 3000;
 const SECRET = process.env.AUTH_SECRET || 'secret';
 const logger = buildLogger('gateway');
 
-// Enable CORS
-app.use(cors());
+// Basic Middleware
+app.use(express.json());
+app.use(cookieParser());
+app.use(helmet());
+app.use(cors({ origin: 'http://localhost:3001', credentials: true }));
 
 // Logging & Request ID Middleware
 app.use(requestMiddleware(logger));
 
-// Additional manual CORS headers
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.sendStatus(200);
-  next();
-});
+// Rate Limiting for auth routes
+const authLimiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
+app.use('/api/auth', authLimiter);
 
-// JWT Auth Middleware
+// JWT Authentication Middleware
 function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -49,19 +50,15 @@ const proxy = (path, target, requireAuth = true) => {
       target,
       changeOrigin: true,
       pathRewrite: (pathReq) => pathReq.replace(new RegExp(`^${path}`), ''),
-      onError: (_err, _req, res) => {
-        res.status(502).json({ error: 'Bad gateway' });
-      },
+      onError: (_err, _req, res) => res.status(502).json({ error: 'Bad gateway' }),
       logLevel: 'warn',
     })
   );
   return middlewares;
 };
 
-// Auth (public)
+// Route proxies
 app.use('/api/auth', ...proxy('/api/auth', 'http://auth-service:8001', false));
-
-// Protected services
 app.use('/api/upload', ...proxy('/api/upload', 'http://upload-service:8002'));
 app.use('/api/metadata', ...proxy('/api/metadata', 'http://metadata-service:8003'));
 app.use('/api/storage', ...proxy('/api/storage', 'http://storage-service:8004'));
@@ -108,7 +105,7 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not Found' });
 });
 
-// Error handler
+// Global error handler
 app.use((err, req, res, _next) => {
   logger.error(`Unhandled error: ${err}`, { requestId: req.requestId });
   res.status(500).json({ error: 'Internal Server Error' });
