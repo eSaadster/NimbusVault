@@ -1,1 +1,4 @@
-fastapi\nuvicorn
+fastapi
+uvicorn
+PyJWT[crypto]
+passlib[bcrypt]
