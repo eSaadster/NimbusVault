@@ -3,6 +3,7 @@
 NimbusVault is a Docker-based microservices architecture.
 
 ## Services
+- **nginx**: Reverse proxy routing to other services.
 - **gateway**: Node.js Express server acting as entrypoint.
 - **auth-service**: FastAPI for authentication.
 - **upload-service**: FastAPI for file uploads.
@@ -22,10 +23,12 @@ docker compose up --build
 
 ## Ports
 - Gateway: `3000`
+- NGINX: `80`
 - Auth Service: `8001`
 - Upload Service: `8002`
 - Metadata Service: `8003`
 - Admin UI: `3001`
 - PostgreSQL: `5432`
 
-Access the services via `http://localhost:<port>`.
+Access the application through NGINX at `http://localhost`.
+Individual services remain available via their exposed ports if needed.
