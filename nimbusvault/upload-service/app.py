@@ -2,12 +2,17 @@ import logging
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
+from pathlib import Path
 import httpx
 import os
 import uvicorn
 
+from shared.storage_utils import save_file  # Ensure this utility is implemented
+
 SERVICE_NAME = "upload-service"
 METADATA_SERVICE_URL = os.getenv("METADATA_SERVICE_URL", "http://metadata-service:8003/metadata")
+UPLOAD_DIR = Path("/tmp/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -45,9 +50,12 @@ async def upload(file: UploadFile = File(...)):
     contents = await file.read()
     logger.info(f"Received file {file.filename} of size {len(contents)} bytes")
 
+    file_path = UPLOAD_DIR / file.filename
+    save_file(str(file_path), contents)
+
     metadata = {
         "filename": file.filename,
-        "uploaded_by": "upload-service",  # In a real app, replace with actual user
+        "uploaded_by": SERVICE_NAME,
         "timestamp": datetime.utcnow().isoformat(),
     }
 
@@ -62,7 +70,11 @@ async def upload(file: UploadFile = File(...)):
         }
     except Exception as exc:
         logger.exception("Failed to submit metadata")
-        return {"status": "received", "filename": file.filename, "error": str(exc)}
+        return {
+            "status": "received",
+            "filename": file.filename,
+            "error": str(exc),
+        }
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8002)
