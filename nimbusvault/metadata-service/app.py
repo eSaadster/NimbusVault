@@ -7,3 +7,8 @@ app = FastAPI()
 @app.get("/")
 async def root():
     return {"message": "Hello from metadata-service"}
+
+
+@app.get("/health")
+async def health():
+    return {"service": "metadata-service", "status": "OK"}
