@@ -1,32 +1,52 @@
 # NimbusVault
 
-NimbusVault is a Docker-based microservices architecture.
+NimbusVault is a microservices-based media storage application built with Docker Compose. Each service is isolated in its own container to keep the stack modular and easy to maintain.
 
 ## Services
-- **gateway**: Node.js Express server acting as entrypoint.
-- **auth-service**: FastAPI for authentication.
-- **upload-service**: FastAPI for file uploads.
-- **storage-service**: Python service handling storage utilities.
-- **metadata-service**: FastAPI service storing metadata in PostgreSQL.
-- **admin-ui**: Next.js frontend.
-- **db**: PostgreSQL database initialized with `db-init/init.sql`.
+- **gateway** – Node.js Express entry point for all API traffic.
+- **auth-service** – FastAPI service handling authentication.
+- **upload-service** – FastAPI service for receiving uploads.
+- **storage-service** – Utility module for storing files (no HTTP interface).
+- **metadata-service** – FastAPI service that stores metadata in PostgreSQL.
+- **admin-ui** – Next.js interface for administrators.
+- **db** – PostgreSQL database initialized with `db-init/init.sql`.
 
-## Getting Started
-
-Ensure you have Docker and Docker Compose installed.
-
+## Setup
 ```bash
-cd nimbusvault
-docker compose up --build
-```
+git clone <repository-url>
+cd NimbusVault/nimbusvault
+docker-compose up --build
+Endpoints and Ports
+Service	Endpoint	Port
+gateway	/	3000
+auth-service	/	8001
+upload-service	/	8002
+metadata-service	/	8003
+admin-ui	/	3001
+db	n/a	5432
+storage-service	n/a	internal
 
-## Ports
-- Gateway: `3000`
-- Auth Service: `8001`
-- Upload Service: `8002`
-- Metadata Service: `8003`
-- Storage Service: `8004`
-- Admin UI: `3000`
-- PostgreSQL: `5432`
+Services can be accessed via http://localhost:<port>.
 
-Access the services via `http://localhost:<port>`.
+Architecture
+pgsql
+Copy
+Edit
+      +-------------+
+      |  Admin UI   | (3001)
+      +-------------+
+             |
+             v
+      +-------------+
+      |   Gateway   | (3000)
+      +-------------+
+       /     |     \
+      v      v      v
+ auth-svc upload-svc metadata-svc
+  (8001)    (8002)      (8003)
+                        |
+                        v
+                   PostgreSQL (5432)
+                        |
+                        v
+                   storage-svc
