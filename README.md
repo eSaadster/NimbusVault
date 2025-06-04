@@ -3,8 +3,10 @@
 NimbusVault is a Docker-based microservices architecture.
 
 ## Services
-- **gateway**: Node.js Express server acting as entrypoint.
+- **gateway**: Node.js Express server acting as entrypoint. Requests to `/upload` and `/metadata` require a valid `Authorization: Bearer <token>` header and are proxied to their respective services.
 - **auth-service**: FastAPI for authentication.
+- `/signup` creates a new user
+- `/login` returns a JWT on successful authentication
 - **upload-service**: FastAPI for file uploads.
 - **storage-service**: Python service handling storage utilities.
 - **metadata-service**: FastAPI service storing metadata in PostgreSQL.
