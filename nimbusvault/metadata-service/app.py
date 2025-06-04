@@ -7,6 +7,10 @@ SERVICE_NAME = "metadata-service"
 
 app = FastAPI()
 
+@app.get("/")
+async def root():
+    return {"message": f"Hello from {SERVICE_NAME}"}
+
 @app.get("/health")
 async def health() -> dict:
     """Health check endpoint."""
