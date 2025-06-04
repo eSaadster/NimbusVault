@@ -3,10 +3,15 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 8000;
 
 // Enable CORS for all routes
 app.use(cors());
+
+// Health check route
+app.get('/health', (req, res) => {
+  res.json({ service: 'gateway', status: 'OK' });
+});
 
 // Common error handler for proxy failures
 const proxyErrorHandler = (err, req, res) => {
@@ -16,7 +21,7 @@ const proxyErrorHandler = (err, req, res) => {
   }
 };
 
-// Route: /auth/* -> http://auth-service:8001
+// Proxy routes
 app.use(
   '/auth',
   createProxyMiddleware({
@@ -27,7 +32,6 @@ app.use(
   })
 );
 
-// Route: /upload/* -> http://upload-service:8002
 app.use(
   '/upload',
   createProxyMiddleware({
@@ -38,13 +42,22 @@ app.use(
   })
 );
 
-// Route: /metadata/* -> http://metadata-service:8003
 app.use(
   '/metadata',
   createProxyMiddleware({
     target: 'http://metadata-service:8003',
     changeOrigin: true,
     pathRewrite: { '^/metadata': '' },
+    onError: proxyErrorHandler,
+  })
+);
+
+app.use(
+  '/storage',
+  createProxyMiddleware({
+    target: 'http://storage-service:8004',
+    changeOrigin: true,
+    pathRewrite: { '^/storage': '' },
     onError: proxyErrorHandler,
   })
 );
@@ -63,4 +76,3 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Gateway running on port ${PORT}`);
 });
-

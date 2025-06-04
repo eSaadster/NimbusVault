@@ -1,4 +1,5 @@
 version: '3.9'
+
 services:
   gateway:
     build: ./gateway
@@ -25,6 +26,10 @@ services:
 
   storage-service:
     build: ./storage-service
+    environment:
+      - PORT=8004
+    ports:
+      - "8004:8004"
 
   metadata-service:
     build: ./metadata-service
@@ -39,7 +44,7 @@ services:
   admin-ui:
     build: ./admin-ui
     ports:
-      - "3001:3001"
+      - "3001:3000"  # Host:Container port mapping
 
   db:
     image: postgres:15
