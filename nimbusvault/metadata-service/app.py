@@ -7,6 +7,7 @@ import os
 import psycopg2
 
 SERVICE_NAME = "metadata-service"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = FastAPI()
 
@@ -17,8 +18,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-DATABASE_URL = os.getenv("DATABASE_URL")
 
 class Metadata(BaseModel):
     filename: str
