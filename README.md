@@ -3,17 +3,17 @@ NimbusVault is a microservices-based media storage application built with Docker
 
 🧩 Services Overview
 Service	Description	Port
-nginx	Reverse proxy for routing requests to internal services	80
+nginx	Reverse proxy for routing requests	80
 gateway	Node.js Express entry point for all API traffic	3000
 auth-service	FastAPI service handling authentication	8001
 upload-service	FastAPI service for receiving uploads	8002
 metadata-service	FastAPI service storing metadata in PostgreSQL	8003
-storage-service	Internal service handling physical file operations	Internal
-storage-init	Initializes persistent storage directories (one-shot)	n/a
-admin-ui	Next.js interface for administrators	3001
-db	PostgreSQL database initialized with db-init/init.sql	5432
+storage-service	Internal FastAPI service for handling file storage	Internal
+storage-init	One-shot service initializing the directory structure	n/a
+admin-ui	Next.js web interface for administrators	3001
+db	PostgreSQL database initialized with init.sql	5432
 
-🐳 Docker Compose
+🚀 Setup
 bash
 Copy
 Edit
@@ -21,10 +21,9 @@ git clone <repository-url>
 cd nimbusvault
 docker compose up --build
 🌐 Access Points
-Access the application via NGINX reverse proxy at:
-http://localhost
+All services are accessible via http://localhost:<port> for testing and development.
 
-For debugging/testing, individual services can be accessed at:
+NGINX Proxy: http://localhost
 
 Gateway: http://localhost:3000
 
@@ -64,7 +63,7 @@ Edit
                           v
                     storage-service
 🗂️ Storage Layout
-The storage-init service sets up a persistent directory tree under /vault-storage, modeled after NextCloud-compatible structure:
+The storage-init service sets up a persistent directory tree under /vault-storage, modeled after a NextCloud-compatible layout:
 
 bash
 Copy
@@ -79,4 +78,4 @@ Edit
 ├── trash/              # Recycle bin
 └── external/
     └── nimbusvault/    # Link to NimbusVault files
-This design allows easy integration with tools expecting a NextCloud-like directory layout.
+This structure enables compatibility with external tools and services expecting a NextCloud-style file system.
