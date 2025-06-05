@@ -94,6 +94,14 @@ services:
     networks:
       - nimbus_net
 
+  storage-init:
+    build:
+      context: .
+      dockerfile: ./storage-init/Dockerfile
+    volumes:
+      - vault_storage:/vault-storage
+    restart: "no"  # Run once only
+
 networks:
   nimbus_net:
     driver: bridge
