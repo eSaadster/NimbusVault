@@ -2,6 +2,25 @@ const { createLogger: winstonCreateLogger, format, transports } = require('winst
 const { v4: uuidv4 } = require('uuid');
 
 /**
+ * Simple legacy logger (backward compatibility)
+ * This maintains compatibility with existing code that expects a simple logger
+ */
+const logger = {
+  info: (message) => {
+    console.log(message);
+  },
+  error: (message) => {
+    console.error(message);
+  },
+  warn: (message) => {
+    console.warn(message);
+  },
+  debug: (message) => {
+    console.debug(message);
+  }
+};
+
+/**
  * Simple logger factory (legacy interface)
  * @param {string} serviceName - Name of the service
  * @returns {Object} Logger with info, error, warn, debug methods
@@ -140,9 +159,52 @@ function getRequestLogger(logger, req) {
   return createChildLogger(logger, context);
 }
 
+/**
+ * Create a simple console logger for quick debugging
+ * @param {string} prefix - Optional prefix for log messages
+ * @returns {Object} Simple logger interface
+ */
+function createSimpleLogger(prefix = '') {
+  const logPrefix = prefix ? `[${prefix}] ` : '';
+  
+  return {
+    info: (message) => console.log(`${logPrefix}${message}`),
+    error: (message) => console.error(`${logPrefix}${message}`),
+    warn: (message) => console.warn(`${logPrefix}${message}`),
+    debug: (message) => console.debug(`${logPrefix}${message}`)
+  };
+}
+
+/**
+ * Auto-detect and create appropriate logger based on environment
+ * @param {string} serviceName - Name of the service
+ * @param {Object} options - Configuration options
+ * @returns {Object} Appropriate logger for the environment
+ */
+function autoLogger(serviceName, options = {}) {
+  // Use simple logger in test environment or when Winston is not available
+  try {
+    if (process.env.NODE_ENV === 'test' || options.simple) {
+      return createLogger(serviceName);
+    }
+    return buildLogger(serviceName, options);
+  } catch (error) {
+    console.warn('Winston logger creation failed, falling back to simple logger:', error.message);
+    return createLogger(serviceName);
+  }
+}
+
 module.exports = {
+  // Legacy exports for backward compatibility
+  logger,
+  
+  // Factory functions
   createLogger,
   buildLogger,
+  createSimpleLogger,
+  autoLogger,
+  
+  // Middleware and utilities
   requestMiddleware,
   createChildLogger,
   getRequestLogger
