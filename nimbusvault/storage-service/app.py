@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pathlib import Path
 import logging
+import os
 
 SERVICE_NAME = "storage-service"
 
@@ -39,3 +40,18 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": SERVICE_NAME}
+
+
+@app.get("/health/detailed")
+async def health_detailed():
+    """Detailed health check including storage info."""
+    storage_ok = Path("/vault-storage").exists()
+    writable = os.access("/vault-storage", os.W_OK)
+    return {
+        "status": "ok" if storage_ok and writable else "error",
+        "storage": {
+            "mounted": storage_ok,
+            "writable": writable,
+            "path": "/vault-storage",
+        },
+    }
