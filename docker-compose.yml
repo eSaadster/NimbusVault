@@ -34,6 +34,9 @@ services:
     volumes:
       - ./upload-service:/app
       <<: *storage-volumes  # Mount shared storage
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
     command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8002"
     ports:
       - "8002:8002"
@@ -46,6 +49,9 @@ services:
     volumes:
       - ./storage-service:/app
       <<: *storage-volumes
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
     command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8003"
     ports:
       - "8003:8003"
@@ -58,6 +64,9 @@ services:
     volumes:
       - ./metadata-service:/app
       <<: *storage-volumes
+    depends_on:
+      storage-init:
+        condition: service_completed_successfully
     command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8004"
     environment:
       DB_HOST: db
