@@ -8,6 +8,7 @@
   "dependencies": {
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "prom-client": "^14.1.1"
   }
 }
