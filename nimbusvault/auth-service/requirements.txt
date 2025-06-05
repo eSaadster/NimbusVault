@@ -1,1 +1,5 @@
-fastapi\nuvicorn
+fastapi
+uvicorn
+prometheus_client
+python-jose[cryptography]
+passlib[bcrypt]
