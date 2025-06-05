@@ -1,40 +1,45 @@
-# NimbusVault
+NimbusVault
+NimbusVault is a microservices-based media storage application built with Docker Compose. Each service runs in its own container, making the system modular, scalable, and easy to maintain.
 
-NimbusVault is a microservices-based media storage application built with Docker Compose. Each service is isolated in its own container to keep the stack modular and easy to maintain.
+🧩 Services Overview
+Service	Description	Port
+nginx	Reverse proxy for routing requests to internal services	80
+gateway	Node.js Express entry point for all API traffic	3000
+auth-service	FastAPI service handling authentication	8001
+upload-service	FastAPI service for receiving uploads	8002
+metadata-service	FastAPI service storing metadata in PostgreSQL	8003
+storage-service	Internal service handling physical file operations	Internal
+storage-init	Initializes persistent storage directories (one-shot)	n/a
+admin-ui	Next.js interface for administrators	3001
+db	PostgreSQL database initialized with db-init/init.sql	5432
 
-## Services
-- **gateway** – Node.js Express entry point for all API traffic.
-- **auth-service** – FastAPI service handling authentication.
-- **upload-service** – FastAPI service for receiving uploads.
-- **storage-service** – Utility module for storing files (no HTTP interface).
-- **storage-init** – Initializes persistent storage directories.
-- **metadata-service** – FastAPI service that stores metadata in PostgreSQL.
-- **admin-ui** – Next.js interface for administrators.
-- **db** – PostgreSQL database initialized with `db-init/init.sql`.
-
-## Setup
-```bash
+🐳 Docker Compose
+bash
+Copy
+Edit
 git clone <repository-url>
-cd NimbusVault/nimbusvault
-docker-compose up --build
-```
+cd nimbusvault
+docker compose up --build
+🌐 Access Points
+Access the application via NGINX reverse proxy at:
+http://localhost
 
-## Endpoints and Ports
-| Service           | Endpoint | Port |
-|-------------------|---------|------|
-| gateway           | `/`     | 3000 |
-| auth-service      | `/`     | 8001 |
-| upload-service    | `/`     | 8002 |
-| metadata-service  | `/`     | 8003 |
-| admin-ui          | `/`     | 3001 |
-| storage-init      | n/a     | n/a (one-shot) |
-| db                | n/a     | 5432 |
-| storage-service   | n/a     | internal |
+For debugging/testing, individual services can be accessed at:
 
-Services can be accessed via `http://localhost:<port>`.
+Gateway: http://localhost:3000
 
-## Architecture
-```
+Auth Service: http://localhost:8001
+
+Upload Service: http://localhost:8002
+
+Metadata Service: http://localhost:8003
+
+Admin UI: http://localhost:3001
+
+🧱 Architecture Diagram
+pgsql
+Copy
+Edit
       +-------------+
       |  Admin UI   | (3001)
       +-------------+
@@ -43,22 +48,27 @@ Services can be accessed via `http://localhost:<port>`.
       +-------------+
       |   Gateway   | (3000)
       +-------------+
+             |
+             v
+      +-------------+
+      |    NGINX    | (80)
+      +-------------+
        /     |     \
       v      v      v
  auth-svc upload-svc metadata-svc
   (8001)    (8002)      (8003)
-                        |
-                        v
-                   PostgreSQL (5432)
-                        |
-                        v
-                   storage-svc
-```
+                          |
+                          v
+                     PostgreSQL (5432)
+                          |
+                          v
+                    storage-service
+🗂️ Storage Layout
+The storage-init service sets up a persistent directory tree under /vault-storage, modeled after NextCloud-compatible structure:
 
-## Storage Layout
-The `storage-init` service creates a persistent directory tree under `/vault-storage` that mirrors a typical NextCloud installation.
-
-```
+bash
+Copy
+Edit
 /vault-storage/
 ├── files/              # Main file storage
 ├── users/
@@ -69,6 +79,4 @@ The `storage-init` service creates a persistent directory tree under `/vault-sto
 ├── trash/              # Recycle bin
 └── external/
     └── nimbusvault/    # Link to NimbusVault files
-```
-
-This layout allows NimbusVault to interoperate with other tools that expect NextCloud-style storage directories.
+This design allows easy integration with tools expecting a NextCloud-like directory layout.
