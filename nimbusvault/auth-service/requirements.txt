@@ -1,5 +1,29 @@
+# Core FastAPI dependencies
 fastapi
 uvicorn
-prometheus_client
+
+# JWT and Authentication
+PyJWT[crypto]
 python-jose[cryptography]
 passlib[bcrypt]
+
+# Monitoring and Metrics
+prometheus_client
+
+# Additional dependencies for production use
+python-multipart
+python-dotenv
+httpx
+aiofiles
+
+# Database (optional - uncomment if needed)
+# sqlalchemy
+# psycopg2-binary
+# alembic
+
+# Development dependencies (install with pip install -r requirements-dev.txt)
+# pytest
+# pytest-asyncio
+# black
+# flake8
+# mypy
