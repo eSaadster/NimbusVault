@@ -6,6 +6,12 @@ SERVICE_NAME = "auth-service"
 app = FastAPI()
 
 
+@app.get("/")
+async def root() -> dict:
+    """Root endpoint returning a greeting."""
+    return {"message": f"Hello from {SERVICE_NAME}"}
+
+
 @app.get("/health")
 async def health() -> dict:
     """Health check endpoint."""
