@@ -1,5 +1,10 @@
 version: '3.8'
 
+# Shared volume mount configuration
+x-storage-volumes: &storage-volumes
+  - vault_storage:/vault-storage
+  - vault_config:/vault-config
+
 services:
   gateway:
     image: node:18
@@ -28,6 +33,7 @@ services:
     working_dir: /app
     volumes:
       - ./upload-service:/app
+      <<: *storage-volumes  # Mount shared storage
     command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8002"
     ports:
       - "8002:8002"
@@ -39,6 +45,7 @@ services:
     working_dir: /app
     volumes:
       - ./storage-service:/app
+      <<: *storage-volumes
     command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8003"
     ports:
       - "8003:8003"
@@ -50,6 +57,7 @@ services:
     working_dir: /app
     volumes:
       - ./metadata-service:/app
+      <<: *storage-volumes
     command: sh -c "pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8004"
     environment:
       DB_HOST: db
@@ -92,3 +100,8 @@ networks:
 
 volumes:
   db_data:
+  vault_storage:
+    driver: local
+  vault_config:
+    driver: local
+
