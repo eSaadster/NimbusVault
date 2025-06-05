@@ -1,10 +1,23 @@
 #!/bin/bash
 set -e
 
-# Create directories for vault storage and configuration
-echo "Initializing storage volumes..."
-mkdir -p /vault-storage
-mkdir -p /vault-config
+# Root directory for all vault storage
+VAULT_ROOT="/vault-storage"
 
-# Placeholder for additional initialization logic
-echo "Initialization complete."
+echo "Initializing storage structure at $VAULT_ROOT ..."
+
+# Create NextCloud-compatible structure
+mkdir -p \ 
+  "$VAULT_ROOT"/uploads \    # Temporary upload staging
+  "$VAULT_ROOT"/files \      # Permanent file storage
+  "$VAULT_ROOT"/users \      # User-specific directories
+  "$VAULT_ROOT"/shared \     # Shared/public files
+  "$VAULT_ROOT"/trash \      # Deleted files retention
+  "$VAULT_ROOT"/temp \       # Processing temporary files
+  "$VAULT_ROOT"/versions \   # File version history
+  "$VAULT_ROOT"/config       # System configuration
+
+# Set permissions so all services can read the directories
+chmod -R 755 "$VAULT_ROOT"
+
+echo "Storage structure initialized!"
