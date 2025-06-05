@@ -1,9 +1,24 @@
 from fastapi import FastAPI
 import uvicorn
+from pathlib import Path
+import logging
 
 SERVICE_NAME = "upload-service"
 
 app = FastAPI()
+
+logger = logging.getLogger(__name__)
+
+# Root persistent storage directory
+VAULT_ROOT = Path("/vault-storage")
+UPLOAD_DIR = VAULT_ROOT / "uploads"
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Ensure persistent directories exist."""
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Using persistent storage: {UPLOAD_DIR}")
 
 
 @app.get("/health")
