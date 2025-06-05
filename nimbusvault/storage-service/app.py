@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import logging
 from pathlib import Path
 from typing import Dict, List
 from fastapi import FastAPI, Request, Depends, UploadFile, File
@@ -9,11 +10,16 @@ from fastapi.responses import JSONResponse, Response
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import uvicorn
 
-# Add shared directory to path
-BASE_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(BASE_DIR / 'shared'))
+# Constants
+SERVICE_NAME = "storage-service"
+VAULT_ROOT = Path("/vault-storage")
+STORAGE_DIR = VAULT_ROOT / "files"
 
-# Attempt to import shared modules
+# Add shared to path
+BASE_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(BASE_DIR / "shared"))
+
+# Attempt shared imports
 try:
     from auth_middleware import AuthMiddleware, get_current_user
     from logger import configure_logger
@@ -22,7 +28,7 @@ except ImportError as e:
     print(f"Warning: Could not import shared modules: {e}")
     import logging
     logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger("storage-service")
+    logger = logging.getLogger(SERVICE_NAME)
 
     class AuthMiddleware:
         def __init__(self, app, public_key=None): pass
@@ -35,9 +41,9 @@ except ImportError as e:
             f.write(data)
         print(f"Saved {file_path}")
 else:
-    logger = configure_logger("storage-service")
+    logger = configure_logger(SERVICE_NAME)
 
-# Load public key for auth middleware
+# Load public key
 try:
     PUBLIC_KEY_PATH = BASE_DIR / 'auth-service' / 'keys' / 'public.pem'
     PUBLIC_KEY = PUBLIC_KEY_PATH.read_text() if PUBLIC_KEY_PATH.exists() else None
@@ -47,12 +53,10 @@ except Exception as e:
     print(f"Warning loading public key: {e}")
     PUBLIC_KEY = None
 
-SERVICE_NAME = "storage-service"
-STORAGE_DIR = Path("/tmp/storage")
-STORAGE_DIR.mkdir(parents=True, exist_ok=True)
-
+# Init FastAPI app
 app = FastAPI()
 
+# Middleware setup
 if PUBLIC_KEY:
     app.add_middleware(AuthMiddleware, public_key=PUBLIC_KEY)
 
@@ -63,13 +67,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Ensure directories
+def ensure_directories():
+    for dir in [VAULT_ROOT / "files", VAULT_ROOT / "users", VAULT_ROOT / "shared", VAULT_ROOT / "trash"]:
+        dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Using persistent storage: {STORAGE_DIR}")
+
+@app.on_event("startup")
+async def startup_event():
+    ensure_directories()
+
 # Prometheus metrics
-REQUEST_COUNT = Counter(
-    "storage_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"]
-)
-REQUEST_LATENCY = Histogram(
-    "storage_request_latency_seconds", "Latency of HTTP requests", ["endpoint"]
-)
+REQUEST_COUNT = Counter("storage_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"])
+REQUEST_LATENCY = Histogram("storage_request_latency_seconds", "Latency of HTTP requests", ["endpoint"])
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
@@ -84,7 +94,7 @@ async def metrics_middleware(request: Request, call_next):
 async def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-# Health checks
+# Health routes
 @app.get("/")
 async def root():
     logger.info("Health check hit")
@@ -92,7 +102,7 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"service": SERVICE_NAME, "status": "OK"}
+    return {"status": "ok", "service": SERVICE_NAME}
 
 @app.get("/health/live")
 async def health_live():
@@ -104,12 +114,22 @@ async def health_ready():
 
 @app.get("/health/detailed")
 async def health_detailed():
-    return {"status": "ok", "dependencies": {}}
+    """Detailed health check including storage info."""
+    storage_ok = VAULT_ROOT.exists()
+    writable = os.access(VAULT_ROOT, os.W_OK)
+    return {
+        "status": "ok" if storage_ok and writable else "error",
+        "storage": {
+            "mounted": storage_ok,
+            "writable": writable,
+            "path": str(VAULT_ROOT),
+        },
+    }
 
 # In-memory metadata store
 stored_metadata: List[Dict] = []
 
-# Public/Protected Routes
+# Public/protected endpoints
 @app.get("/public")
 async def public_route():
     return {"message": "public endpoint - no authentication required"}
@@ -120,22 +140,22 @@ async def protected_route(user=Depends(get_current_user)):
 
 # Metadata routes
 @app.post("/store")
-async def store_metadata(metadata: Dict, user=Depends(get_current_user)) -> Dict[str, str]:
+async def store_metadata(metadata: Dict, user=Depends(get_current_user)):
     metadata_with_user = {
         **metadata,
         "stored_by": user.get("user", "unknown"),
-        "timestamp": str(Path().stat().st_mtime) if Path().exists() else "unknown"
+        "timestamp": str(time.time())
     }
     stored_metadata.append(metadata_with_user)
     logger.info(f"Metadata stored: {metadata_with_user}")
     return {"result": "saved", "metadata_id": len(stored_metadata) - 1}
 
 @app.get("/store")
-async def get_stored_metadata(user=Depends(get_current_user)) -> Dict[str, List[Dict]]:
+async def get_stored_metadata(user=Depends(get_current_user)):
     logger.info(f"Metadata retrieved by user: {user}")
     return {"metadata": stored_metadata}
 
-# File upload and listing
+# File routes
 @app.post("/files")
 async def store_file(file: UploadFile = File(...), user=Depends(get_current_user)):
     try:
@@ -159,7 +179,7 @@ async def store_file(file: UploadFile = File(...), user=Depends(get_current_user
         return {"error": "Failed to store file", "details": str(e)}
 
 @app.get("/files")
-async def list_files(user=Depends(get_current_user)) -> Dict[str, List[str]]:
+async def list_files(user=Depends(get_current_user)):
     try:
         files = [f.name for f in STORAGE_DIR.iterdir() if f.is_file()]
         logger.info(f"Files listed by user: {user}")
@@ -182,7 +202,7 @@ async def delete_file(filename: str, user=Depends(get_current_user)):
         logger.error(f"Error deleting file: {e}")
         return {"error": "Failed to delete file", "details": str(e)}
 
-# App startup
+# Startup runner
 if __name__ == "__main__":
     logger.info("Storage service started")
     port = int(os.environ.get("PORT", 8004))

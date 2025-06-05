@@ -156,13 +156,23 @@ async def health_ready():
     return JSONResponse(status_code=503, content={"status": "error", "database": "unreachable"})
 
 @app.get("/health/detailed")
-async def health_detailed():
+async def health_detailed() -> dict:
+    """Detailed health check including storage and DB info."""
+    storage_ok = Path("/vault-storage").exists()
+    writable = os.access("/vault-storage", os.W_OK)
     db_ok = check_db()
-    status = "ok" if db_ok else "error"
-    return JSONResponse(
-        status_code=200 if db_ok else 503,
-        content={"status": status, "dependencies": {"database": db_ok}},
-    )
+    status = "ok" if storage_ok and writable and db_ok else "error"
+    return {
+        "status": status,
+        "storage": {
+            "mounted": storage_ok,
+            "writable": writable,
+            "path": "/vault-storage",
+        },
+        "dependencies": {
+            "database": db_ok
+        }
+    }
 
 @app.get("/public")
 async def public_route():

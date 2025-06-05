@@ -11,18 +11,18 @@ from fastapi.responses import JSONResponse, Response
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import httpx
 import uvicorn
+import logging
 
-# Add shared directory to path
+# Add shared to sys.path
 BASE_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(BASE_DIR / 'shared'))
 
-# Import shared modules with fallback
+# Import shared modules with fallbacks
 try:
     from auth_middleware import AuthMiddleware, get_current_user
     from logger import configure_logger, request_id_middleware
     from storage_utils import save_file
 except ImportError as e:
-    import logging
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("upload-service")
 
@@ -39,11 +39,10 @@ except ImportError as e:
     def save_file(file_path: str, data: bytes):
         with open(file_path, 'wb') as f:
             f.write(data)
-
 else:
     logger = configure_logger("upload-service")
 
-# Load public key
+# Load public key for auth middleware
 try:
     PUBLIC_KEY_PATH = BASE_DIR / 'auth-service' / 'keys' / 'public.pem'
     PUBLIC_KEY = PUBLIC_KEY_PATH.read_text() if PUBLIC_KEY_PATH.exists() else None
@@ -55,11 +54,19 @@ except Exception as e:
 
 SERVICE_NAME = "upload-service"
 METADATA_SERVICE_URL = os.getenv("METADATA_SERVICE_URL", "http://metadata-service:8003/metadata")
-UPLOAD_DIR = Path("/tmp/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+VAULT_ROOT = Path("/vault-storage")
+UPLOAD_DIR = VAULT_ROOT / "uploads"
 
 app = FastAPI()
 
+# Ensure upload directory exists
+@app.on_event("startup")
+async def startup_event():
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Using persistent storage: {UPLOAD_DIR}")
+    logger.info(f"{SERVICE_NAME} starting up")
+
+# Apply middleware
 if PUBLIC_KEY:
     app.add_middleware(AuthMiddleware, public_key=PUBLIC_KEY)
 
@@ -75,12 +82,8 @@ async def add_request_id(request: Request, call_next):
     return await request_id_middleware(request, call_next)
 
 # Prometheus metrics
-REQUEST_COUNT = Counter(
-    "upload_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"]
-)
-REQUEST_LATENCY = Histogram(
-    "upload_request_latency_seconds", "Latency of HTTP requests", ["endpoint"]
-)
+REQUEST_COUNT = Counter("upload_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"])
+REQUEST_LATENCY = Histogram("upload_request_latency_seconds", "Latency of HTTP requests", ["endpoint"])
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
@@ -100,11 +103,7 @@ async def exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled error: {exc}", exc_info=True)
     return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
-@app.on_event("startup")
-async def startup_event():
-    logger.info(f"{SERVICE_NAME} starting up")
-
-# Health endpoints
+# Health & system routes
 @app.get("/")
 async def root(request: Request):
     logger.info("Health check", extra={"requestId": getattr(request.state, 'request_id', 'unknown')})
@@ -123,8 +122,18 @@ async def health_ready():
     return {"status": "ok"}
 
 @app.get("/health/detailed")
-async def health_detailed():
-    return {"status": "ok", "dependencies": {}}
+async def health_detailed() -> dict:
+    """Detailed health check including storage info."""
+    storage_ok = VAULT_ROOT.exists()
+    writable = os.access(VAULT_ROOT, os.W_OK)
+    return {
+        "status": "ok" if storage_ok and writable else "error",
+        "storage": {
+            "mounted": storage_ok,
+            "writable": writable,
+            "path": str(VAULT_ROOT),
+        },
+    }
 
 @app.get("/public")
 async def public_route():
@@ -137,7 +146,7 @@ async def protected_route(user=Depends(get_current_user)):
 @app.get("/log")
 async def log_route(request: Request):
     logger.info(
-        f"Received request from {request.client.host} to {request.url.path}", 
+        f"Received request from {request.client.host} to {request.url.path}",
         extra={"requestId": getattr(request.state, 'request_id', 'unknown')}
     )
     return {"message": "Request logged"}
@@ -151,10 +160,7 @@ async def upload_file(
     try:
         contents = await file.read()
         request_id = getattr(request.state, 'request_id', 'unknown') if request else 'unknown'
-        logger.info(
-            f"Received file {file.filename} from {user}", 
-            extra={"requestId": request_id}
-        )
+        logger.info(f"Received file {file.filename} from {user}", extra={"requestId": request_id})
 
         safe_filename = "".join(c for c in file.filename if c.isalnum() or c in "._- ")
         file_path = UPLOAD_DIR / safe_filename
@@ -195,10 +201,7 @@ async def upload_file(
             }
 
     except Exception as exc:
-        logger.exception(
-            f"Failed to upload file {file.filename}", 
-            extra={"requestId": getattr(request.state, 'request_id', 'unknown') if request else 'unknown'}
-        )
+        logger.exception(f"Failed to upload file {file.filename}", extra={"requestId": getattr(request.state, 'request_id', 'unknown') if request else 'unknown'})
         return JSONResponse(
             status_code=500,
             content={"status": "error", "message": "File upload failed", "error": str(exc)}
@@ -235,7 +238,6 @@ async def delete_upload(filename: str, user=Depends(get_current_user)):
             return {"message": f"File {filename} deleted successfully"}
         else:
             return JSONResponse(status_code=404, content={"error": "File not found"})
-
     except Exception as exc:
         logger.error(f"Failed to delete file {filename}: {exc}")
         return JSONResponse(
