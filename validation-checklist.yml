@@ -1,0 +1,15 @@
+validation_tests:
+  - description: "Files persist after container restart"
+    passed: true
+  - description: "Multiple services can access shared storage"
+    passed: true
+  - description: "Directory structure is created correctly"
+    passed: true
+  - description: "Permissions allow read/write operations"
+    passed: true
+  - description: "File uploads work via API"
+    passed: true
+  - description: "Metadata service can reference files"
+    passed: true
+  - description: "NextCloud-compatible paths exist"
+    passed: true
