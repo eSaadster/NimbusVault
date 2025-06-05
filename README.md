@@ -7,6 +7,7 @@ NimbusVault is a microservices-based media storage application built with Docker
 - **auth-service** – FastAPI service handling authentication.
 - **upload-service** – FastAPI service for receiving uploads.
 - **storage-service** – Utility module for storing files (no HTTP interface).
+- **storage-init** – Initializes persistent storage directories.
 - **metadata-service** – FastAPI service that stores metadata in PostgreSQL.
 - **admin-ui** – Next.js interface for administrators.
 - **db** – PostgreSQL database initialized with `db-init/init.sql`.
@@ -26,6 +27,7 @@ docker-compose up --build
 | upload-service    | `/`     | 8002 |
 | metadata-service  | `/`     | 8003 |
 | admin-ui          | `/`     | 3001 |
+| storage-init      | n/a     | n/a (one-shot) |
 | db                | n/a     | 5432 |
 | storage-service   | n/a     | internal |
 
