@@ -54,3 +54,21 @@ Services can be accessed via `http://localhost:<port>`.
                         v
                    storage-svc
 ```
+
+## Storage Layout
+The `storage-init` service creates a persistent directory tree under `/vault-storage` that mirrors a typical NextCloud installation.
+
+```
+/vault-storage/
+├── files/              # Main file storage
+├── users/
+│   ├── admin/
+│   ├── user1/
+│   └── user2/
+├── shared/             # Public/shared files
+├── trash/              # Recycle bin
+└── external/
+    └── nimbusvault/    # Link to NimbusVault files
+```
+
+This layout allows NimbusVault to interoperate with other tools that expect NextCloud-style storage directories.
